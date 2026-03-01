@@ -6,6 +6,7 @@ export class  WebrtcService {
     private socket!: Socket;
     private peerConnection!: RTCPeerConnection;
     private localStream!: MediaStream;
+    private videoSender!: RTCRtpSender;
 
     remoteStream = signal<MediaStream | null>(null);
 
@@ -44,7 +45,11 @@ export class  WebrtcService {
         this.peerConnection = new RTCPeerConnection(this.iceConfig);
 
         this.localStream.getTracks().forEach(track => {
-            this.peerConnection.addTrack(track, this.localStream);
+            const sender = this.peerConnection.addTrack(track, this.localStream);
+
+            if(track.kind == 'video') {
+                this.videoSender = sender;
+            }
         });
 
         this.peerConnection.ontrack = event => {
@@ -80,5 +85,23 @@ export class  WebrtcService {
 
         const answer = this.peerConnection.createAnswer();
         await this.socket.emit('answer', {roomId, answer})
+    }
+
+    async shareScreen(videoElemnt: HTMLVideoElement) {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({video:true});
+
+        const screenTrack = screenStream.getVideoTracks()[0];
+
+        await this.videoSender.replaceTrack(screenTrack);
+
+        videoElemnt.srcObject = screenStream;
+
+        screenTrack.onended = async () => {
+            this.videoSender.replaceTrack(
+                await this.localStream.getVideoTracks()[0]
+            );
+            videoElemnt.srcObject = this.localStream;
+        }
+
     }
 }

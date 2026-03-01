@@ -27,4 +27,9 @@ export class VideoCall {
     await this.webrtc.startLocalStream(this.localVideo.nativeElement);
     await this.webrtc.createPeer(this.roomId);
   }
+
+  async share() {
+    await this.webrtc.shareScreen(this.localVideo.nativeElement);
+  }
+
 }
